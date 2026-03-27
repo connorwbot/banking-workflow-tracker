@@ -45,23 +45,5 @@ export async function POST(request: Request) {
 
   if (error) return NextResponse.json({ error: error.message }, { status: 500 })
 
-  // Auto-create pipeline deal for pitches and live deals
-  if (['pitch', 'live_deal'].includes(parsed.data.type)) {
-    const { data: firstStage } = await supabase
-      .from('pipeline_stages')
-      .select('id')
-      .is('user_id', null)
-      .eq('slug', 'pitching')
-      .single()
-
-    if (firstStage) {
-      await supabase.from('pipeline_deals').insert({
-        user_id: user.id,
-        project_id: data.id,
-        stage_id: firstStage.id,
-      })
-    }
-  }
-
   return NextResponse.json({ project: data }, { status: 201 })
 }

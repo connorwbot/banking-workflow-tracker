@@ -6,7 +6,7 @@ import { cn } from '@/lib/utils/cn'
 import {
   LayoutDashboard,
   FolderKanban,
-  GitMerge,
+  ListTodo,
   BookOpen,
   Clock,
   CalendarDays,
@@ -19,7 +19,7 @@ import { useRouter } from 'next/navigation'
 const NAV = [
   { href: '/dashboard',  label: 'Dashboard',   icon: LayoutDashboard },
   { href: '/projects',   label: 'Projects',     icon: FolderKanban },
-  { href: '/pipeline',   label: 'Pipeline',     icon: GitMerge },
+  { href: '/pipeline',   label: 'Task Queue',   icon: ListTodo },
   { href: '/standup',    label: 'Daily Log',    icon: BookOpen },
   { href: '/free-time',  label: 'Free Time',    icon: Clock },
   { href: '/weekly',     label: 'Weekly',       icon: CalendarDays },

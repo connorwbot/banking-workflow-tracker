@@ -18,7 +18,7 @@ export async function GET(request: Request) {
   const monStr = format(monday, 'yyyy-MM-dd')
   const sunStr = format(sunday, 'yyyy-MM-dd')
 
-  const [subtasksRes, projectsRes, standupRes, pipelineRes, profileRes] = await Promise.all([
+  const [subtasksRes, projectsRes, standupRes, profileRes, completedRes] = await Promise.all([
     supabase.from('subtasks').select('*, project:projects(name,color,type)').eq('user_id', user.id)
       .gte('due_date', monStr).lte('due_date', sunStr).eq('completed', false)
       .order('due_date', { ascending: true }),
@@ -26,9 +26,14 @@ export async function GET(request: Request) {
       .gte('due_date', monStr).lte('due_date', sunStr),
     supabase.from('standup_logs').select('*').eq('user_id', user.id)
       .gte('log_date', monStr).lte('log_date', sunStr),
-    supabase.from('pipeline_deals').select('*, project:projects(*), stage:pipeline_stages(*)').eq('user_id', user.id),
     supabase.from('profiles').select('*').eq('id', user.id).single(),
+    supabase.from('subtasks').select('id', { count: 'exact', head: true })
+      .eq('user_id', user.id).eq('completed', true)
+      .gte('completed_at', monStr).lte('completed_at', sunStr + 'T23:59:59'),
   ])
+
+  const completedCount = completedRes.count ?? 0
+  const totalCount = completedCount + (subtasksRes.data?.length ?? 0)
 
   // Availability by day: count events per day from GCal
   let availabilityByDay: Record<string, number> = {}
@@ -53,7 +58,7 @@ export async function GET(request: Request) {
     subtasks: subtasksRes.data ?? [],
     projects: projectsRes.data ?? [],
     standups: standupRes.data ?? [],
-    pipeline: pipelineRes.data ?? [],
+    taskProgress: { completed: completedCount, total: totalCount },
     availabilityByDay,
   })
 }

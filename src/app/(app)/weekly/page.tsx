@@ -8,7 +8,7 @@ import { Skeleton } from '@/components/ui/Skeleton'
 import { StandupEntry } from '@/components/standup/StandupEntry'
 import { format, addDays, subDays, startOfWeek, parseISO } from 'date-fns'
 import { ChevronLeft, ChevronRight, CalendarDays } from 'lucide-react'
-import type { Subtask, Project, StandupLog, DealWithProject } from '@/types/database'
+import type { Subtask, Project, StandupLog } from '@/types/database'
 import { priorityConfig } from '@/lib/utils/priority'
 
 interface WeeklyData {
@@ -16,7 +16,7 @@ interface WeeklyData {
   subtasks: (Subtask & { project: { name: string; color: string; type: string } | null })[]
   projects: Project[]
   standups: StandupLog[]
-  pipeline: DealWithProject[]
+  taskProgress: { completed: number; total: number }
   availabilityByDay: Record<string, number>
 }
 
@@ -118,21 +118,26 @@ export default function WeeklyPage() {
           </div>
         ) : null}
 
-        {/* Pipeline summary */}
-        {(data?.pipeline.length ?? 0) > 0 && (
+        {/* Task progress */}
+        {data?.taskProgress && data.taskProgress.total > 0 && (
           <div>
-            <h2 className="font-semibold text-slate-700 text-sm mb-3">Active Pipeline</h2>
-            <div className="grid gap-2">
-              {(data?.pipeline ?? []).map((deal) => (
-                <div key={deal.id} className="bg-white border border-slate-200 rounded-xl p-3 flex items-center gap-3">
-                  <div className="w-2 h-2 rounded-full flex-shrink-0" style={{ backgroundColor: (deal.stage as { color: string } | undefined)?.color ?? '#3B82F6' }} />
-                  <span className="text-sm font-medium text-slate-800 flex-1">{deal.project?.name}</span>
-                  <Badge variant="blue">{(deal.stage as { name: string } | undefined)?.name}</Badge>
-                  {deal.probability !== null && (
-                    <span className="text-xs text-slate-400">{deal.probability}%</span>
-                  )}
-                </div>
-              ))}
+            <h2 className="font-semibold text-slate-700 text-sm mb-3">Task Progress</h2>
+            <div className="bg-white border border-slate-200 rounded-xl p-4 space-y-3">
+              <div className="flex items-center justify-between">
+                <span className="text-sm text-slate-600">Completed this week</span>
+                <span className="text-sm font-semibold text-slate-900">
+                  {data.taskProgress.completed} / {data.taskProgress.total}
+                </span>
+              </div>
+              <div className="w-full bg-slate-100 rounded-full h-2">
+                <div
+                  className="bg-blue-500 h-2 rounded-full transition-all"
+                  style={{ width: `${Math.round((data.taskProgress.completed / data.taskProgress.total) * 100)}%` }}
+                />
+              </div>
+              <p className="text-xs text-slate-400">
+                {Math.round((data.taskProgress.completed / data.taskProgress.total) * 100)}% completion rate
+              </p>
             </div>
           </div>
         )}

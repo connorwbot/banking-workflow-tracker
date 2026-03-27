@@ -3,11 +3,11 @@
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import { cn } from '@/lib/utils/cn'
-import { LayoutDashboard, GitMerge, BookOpen, Clock, CalendarDays } from 'lucide-react'
+import { LayoutDashboard, ListTodo, BookOpen, Clock, CalendarDays } from 'lucide-react'
 
 const TABS = [
-  { href: '/dashboard', label: 'Home',     icon: LayoutDashboard },
-  { href: '/pipeline',  label: 'Pipeline', icon: GitMerge },
+  { href: '/dashboard', label: 'Home',    icon: LayoutDashboard },
+  { href: '/pipeline',  label: 'Tasks',   icon: ListTodo },
   { href: '/standup',   label: 'Log',      icon: BookOpen },
   { href: '/free-time', label: 'Free Time',icon: Clock },
   { href: '/weekly',    label: 'Weekly',   icon: CalendarDays },
