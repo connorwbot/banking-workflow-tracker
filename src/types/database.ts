@@ -32,6 +32,12 @@ export interface UserPreferences {
   work_day_start: string
   work_day_end: string
   timezone: string
+  // Protected hours — window off-limits for work staffing
+  protected_hours_enabled: boolean
+  protected_start_day: number   // 0=Sun … 6=Sat
+  protected_start_time: string  // 'HH:MM'
+  protected_end_day: number
+  protected_end_time: string
   created_at: string
   updated_at: string
 }

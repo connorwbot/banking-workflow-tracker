@@ -78,6 +78,41 @@ function assessConfidence(gap: TimeBlock, slotStart: Date, slotEnd: Date, blocks
   return 'high'
 }
 
+function isProtected(
+  slotStart: Date,
+  slotEnd: Date,
+  prefs: UserPreferences,
+  tz: string
+): boolean {
+  if (!prefs.protected_hours_enabled) return false
+
+  // Build the protected window boundaries relative to the slot's week.
+  // Protected window may span midnight (e.g. Fri 19:00 → Sat 10:00).
+  // Strategy: walk back from slotStart to find the most-recent occurrence of
+  // protected_start_day+time, then compute window end from there.
+  const slotStartLocal = toZonedTime(slotStart, tz)
+  const slotDow = getDay(slotStartLocal)
+
+  // Days since the most recent protected_start_day (0–6)
+  let daysDiff = (slotDow - prefs.protected_start_day + 7) % 7
+  const windowStartLocal = new Date(slotStartLocal)
+  windowStartLocal.setDate(windowStartLocal.getDate() - daysDiff)
+  const [sh, sm] = prefs.protected_start_time.split(':').map(Number)
+  windowStartLocal.setHours(sh, sm, 0, 0)
+  const windowStart = fromZonedTime(windowStartLocal, tz)
+
+  const windowEndLocal = new Date(windowStartLocal)
+  let endDaysDiff = (prefs.protected_end_day - prefs.protected_start_day + 7) % 7
+  if (endDaysDiff === 0) endDaysDiff = 7 // same weekday means next occurrence
+  windowEndLocal.setDate(windowEndLocal.getDate() + endDaysDiff)
+  const [eh, em] = prefs.protected_end_time.split(':').map(Number)
+  windowEndLocal.setHours(eh, em, 0, 0)
+  const windowEnd = fromZonedTime(windowEndLocal, tz)
+
+  // Overlap check: slot overlaps window if slot starts before window ends and slot ends after window starts
+  return slotStart < windowEnd && slotEnd > windowStart
+}
+
 export function findFreeSlots(
   events: GoogleCalendarEvent[],
   prefs: UserPreferences,
@@ -131,7 +166,7 @@ export function findFreeSlots(
         if (overlapStart) {
           const slotStart = overlapStart
           const slotEnd = new Date(slotStart.getTime() + gymDur * 60000)
-          if (slotEnd <= gap.end && slotEnd <= gymEnd) {
+          if (slotEnd <= gap.end && slotEnd <= gymEnd && !isProtected(slotStart, slotEnd, prefs, tz)) {
             results.push({
               suggestion_date: dateStr,
               slot_type: 'gym',
@@ -156,7 +191,7 @@ export function findFreeSlots(
       if (lunchOverlapStart && gapMins >= 45) {
         const slotStart = lunchOverlapStart
         const slotEnd = new Date(slotStart.getTime() + lunchDur * 60000)
-        if (slotEnd <= gap.end && slotEnd <= lunchEnd) {
+        if (slotEnd <= gap.end && slotEnd <= lunchEnd && !isProtected(slotStart, slotEnd, prefs, tz)) {
           results.push({
             suggestion_date: dateStr,
             slot_type: 'lunch',
@@ -180,7 +215,7 @@ export function findFreeSlots(
       if (dinnerOverlapStart && gapMins >= 45) {
         const slotStart = dinnerOverlapStart
         const slotEnd = new Date(slotStart.getTime() + dinnerDur * 60000)
-        if (slotEnd <= gap.end && slotEnd <= dinnerEnd) {
+        if (slotEnd <= gap.end && slotEnd <= dinnerEnd && !isProtected(slotStart, slotEnd, prefs, tz)) {
           results.push({
             suggestion_date: dateStr,
             slot_type: 'dinner',
@@ -192,9 +227,9 @@ export function findFreeSlots(
         }
       }
 
-      // Focus blocks (remaining gap, outside meal/gym windows)
+      // Focus blocks — always excluded during protected hours
       const minFocus = prefs.focus_min_duration_mins
-      if (gapMins >= minFocus) {
+      if (gapMins >= minFocus && !isProtected(gap.start, gap.end, prefs, tz)) {
         const breakMins = 15
         if (gapMins > 180) {
           // Split into two focus blocks
