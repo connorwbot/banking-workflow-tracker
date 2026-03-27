@@ -19,6 +19,7 @@ export function StandupForm({ existing, onSaved }: StandupFormProps) {
   const [wins, setWins] = useState(existing?.wins ?? '')
   const [tomorrow, setTomorrow] = useState(existing?.tomorrow_plan ?? '')
   const [mood, setMood] = useState<number | null>(existing?.mood_score ?? null)
+  const [hoursWorked, setHoursWorked] = useState<number | null>(existing?.hours_worked ?? null)
   const [loading, setLoading] = useState(false)
   const [saved, setSaved] = useState(false)
 
@@ -32,6 +33,7 @@ export function StandupForm({ existing, onSaved }: StandupFormProps) {
       wins: wins || null,
       tomorrow_plan: tomorrow || null,
       mood_score: mood,
+      hours_worked: hoursWorked,
     })
     setSaved(true)
     setLoading(false)
@@ -81,6 +83,23 @@ export function StandupForm({ existing, onSaved }: StandupFormProps) {
           rows={2}
           placeholder="Finish CIM, send to client by EOD..."
           className="w-full px-3 py-2.5 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none"
+        />
+      </div>
+
+      <div>
+        <label className="block text-sm font-medium text-slate-700 mb-1.5">
+          Hours worked today{' '}
+          <span className="text-slate-400 font-normal">(optional — can also be set on the Hours page)</span>
+        </label>
+        <input
+          type="number"
+          min={0}
+          max={24}
+          step={0.5}
+          value={hoursWorked ?? ''}
+          onChange={(e) => setHoursWorked(e.target.value ? Number(e.target.value) : null)}
+          placeholder="e.g. 12.5"
+          className="w-full px-3 py-2.5 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
         />
       </div>
 

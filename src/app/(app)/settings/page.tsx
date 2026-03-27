@@ -7,11 +7,76 @@ import { Skeleton } from '@/components/ui/Skeleton'
 import useSWR, { mutate } from 'swr'
 import { createClient } from '@/lib/supabase/client'
 import { useRouter } from 'next/navigation'
-import { Check, Link2, Link2Off } from 'lucide-react'
+import { Check, Link2, Link2Off, Plus, Trash2 } from 'lucide-react'
+import type { TeamMember } from '@/types/database'
 
 const fetcher = (url: string) => fetch(url).then((r) => r.json())
 
 const DAYS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat']
+
+const fetcher2 = (url: string) => fetch(url).then((r) => r.json())
+
+function TeamMembersCard() {
+  const { data, isLoading } = useSWR<{ members: TeamMember[] }>('/api/team-members', fetcher2)
+  const [newName, setNewName] = useState('')
+  const [adding, setAdding] = useState(false)
+
+  const members = data?.members ?? []
+
+  async function handleAdd(e: React.FormEvent) {
+    e.preventDefault()
+    if (!newName.trim()) return
+    setAdding(true)
+    await fetch('/api/team-members', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ name: newName.trim() }),
+    })
+    setNewName('')
+    setAdding(false)
+    mutate('/api/team-members')
+  }
+
+  async function handleDelete(id: string) {
+    await fetch(`/api/team-members/${id}`, { method: 'DELETE' })
+    mutate('/api/team-members')
+  }
+
+  return (
+    <div className="bg-white rounded-xl border border-slate-200 p-5 space-y-4">
+      <h2 className="font-semibold text-slate-800">Team Members</h2>
+      <p className="text-xs text-slate-500">Add associates/analysts who delegate work to you.</p>
+      {isLoading ? (
+        <Skeleton className="h-8 w-full" />
+      ) : (
+        <div className="space-y-2">
+          {members.map((m) => (
+            <div key={m.id} className="flex items-center justify-between py-1.5 px-3 bg-slate-50 rounded-lg">
+              <span className="text-sm text-slate-700">{m.name}</span>
+              <button
+                onClick={() => handleDelete(m.id)}
+                className="p-1.5 text-slate-400 hover:text-red-500 transition-colors"
+              >
+                <Trash2 size={14} />
+              </button>
+            </div>
+          ))}
+        </div>
+      )}
+      <form onSubmit={handleAdd} className="flex gap-2">
+        <input
+          value={newName}
+          onChange={(e) => setNewName(e.target.value)}
+          placeholder="Name (e.g. John Smith)"
+          className="flex-1 px-3 py-2 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+        />
+        <Button type="submit" size="sm" loading={adding}>
+          <Plus size={14} />
+        </Button>
+      </form>
+    </div>
+  )
+}
 
 export default function SettingsPage() {
   const router = useRouter()
@@ -31,6 +96,7 @@ export default function SettingsPage() {
     work_day_start: '08:00',
     work_day_end: '22:00',
     timezone: 'America/New_York',
+    internship_start_date: '2026-05-04',
   })
   const [saving, setSaving] = useState(false)
   const [saved, setSaved] = useState(false)
@@ -80,6 +146,9 @@ export default function SettingsPage() {
       <Header title="Settings" />
 
       <div className="flex-1 px-4 py-5 lg:px-6 max-w-xl space-y-6">
+        {/* Team Members */}
+        <TeamMembersCard />
+
         {/* Google Calendar */}
         <div className="bg-white rounded-xl border border-slate-200 p-5">
           <h2 className="font-semibold text-slate-800 mb-3">Google Calendar</h2>
@@ -120,6 +189,11 @@ export default function SettingsPage() {
                 <input type="time" value={prefs.work_day_end} onChange={(e) => setPrefs((p) => ({ ...p, work_day_end: e.target.value }))}
                   className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
               </div>
+            </div>
+            <div>
+              <label className="block text-xs font-medium text-slate-600 mb-1">Internship start date</label>
+              <input type="date" value={prefs.internship_start_date} onChange={(e) => setPrefs((p) => ({ ...p, internship_start_date: e.target.value }))}
+                className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
             </div>
             <div>
               <label className="block text-xs font-medium text-slate-600 mb-1">Timezone</label>

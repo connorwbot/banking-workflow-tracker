@@ -9,6 +9,7 @@ const Schema = z.object({
   wins: z.string().optional().nullable(),
   tomorrow_plan: z.string().optional().nullable(),
   mood_score: z.number().min(1).max(5).optional().nullable(),
+  hours_worked: z.number().min(0).max(24).optional().nullable(),
 })
 
 export async function GET(request: Request) {

@@ -38,6 +38,7 @@ export interface UserPreferences {
   protected_start_time: string  // 'HH:MM'
   protected_end_day: number
   protected_end_time: string
+  internship_start_date: string // 'YYYY-MM-DD'
   created_at: string
   updated_at: string
 }
@@ -58,6 +59,13 @@ export interface Project {
   updated_at: string
 }
 
+export interface TeamMember {
+  id: string
+  user_id: string
+  name: string
+  created_at: string
+}
+
 export interface Subtask {
   id: string
   project_id: string
@@ -70,6 +78,7 @@ export interface Subtask {
   completed: boolean
   completed_at: string | null
   gcal_event_id: string | null
+  delegated_by: string[]
   sort_order: number
   created_at: string
   updated_at: string
@@ -84,6 +93,7 @@ export interface StandupLog {
   wins: string | null
   tomorrow_plan: string | null
   mood_score: number | null
+  hours_worked: number | null
   created_at: string
   updated_at: string
 }
@@ -161,6 +171,7 @@ export interface Database {
       pipeline_stages: { Row: PipelineStage; Insert: Partial<PipelineStage>; Update: Partial<PipelineStage> }
       pipeline_deals: { Row: PipelineDeal; Insert: Partial<PipelineDeal>; Update: Partial<PipelineDeal> }
       pipeline_stage_history: { Row: PipelineStageHistory; Insert: Partial<PipelineStageHistory>; Update: Partial<PipelineStageHistory> }
+      team_members: { Row: TeamMember; Insert: Partial<TeamMember>; Update: Partial<TeamMember> }
     }
   }
 }

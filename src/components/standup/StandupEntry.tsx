@@ -7,7 +7,12 @@ export function StandupEntry({ log }: { log: StandupLog }) {
   return (
     <div className="bg-white rounded-xl border border-slate-200 p-4 space-y-3">
       <div className="flex items-center justify-between">
-        <h3 className="font-semibold text-slate-800 text-sm">{formatDate(log.log_date, 'EEEE, MMMM d')}</h3>
+        <div className="flex items-center gap-2">
+          <h3 className="font-semibold text-slate-800 text-sm">{formatDate(log.log_date, 'EEEE, MMMM d')}</h3>
+          {log.hours_worked != null && (
+            <span className="text-xs text-slate-500 bg-slate-100 px-2 py-0.5 rounded-full">{log.hours_worked} hrs</span>
+          )}
+        </div>
         {log.mood_score && (
           <span className="text-lg">{MOODS[log.mood_score - 1]}</span>
         )}
