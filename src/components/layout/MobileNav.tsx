@@ -6,7 +6,7 @@ import { cn } from '@/lib/utils/cn'
 import { LayoutDashboard, ListTodo, BookOpen, Timer, CalendarDays } from 'lucide-react'
 
 const TABS = [
-  { href: '/dashboard', label: 'Home',  icon: LayoutDashboard },
+  { href: '/dashboard', label: 'Today', icon: LayoutDashboard },
   { href: '/pipeline',  label: 'Tasks', icon: ListTodo },
   { href: '/standup',   label: 'Log',   icon: BookOpen },
   { href: '/hours',     label: 'Hours', icon: Timer },

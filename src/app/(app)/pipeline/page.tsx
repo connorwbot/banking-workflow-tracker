@@ -1,17 +1,19 @@
 'use client'
 
-import { useState, useMemo } from 'react'
+import { useState } from 'react'
 import useSWR from 'swr'
 import { isToday, isPast, parseISO, addDays } from 'date-fns'
 import { Header } from '@/components/layout/Header'
 import { SkeletonCard } from '@/components/ui/Skeleton'
 import { PRIORITY_CONFIG } from '@/lib/utils/priority'
-import { dueDateLabel } from '@/lib/utils/date'
+import { dueDateLabel, formatTime } from '@/lib/utils/date'
 import { cn } from '@/lib/utils/cn'
-import type { Subtask } from '@/types/database'
+import type { Subtask, SubtaskStatus } from '@/types/database'
 
 type TaskWithProject = Subtask & {
   project: { name: string; color: string; type: string; status: string } | null
+  delegated_by_names?: string[]
+  owner_member_name?: string | null
 }
 
 type FilterType = 'all' | 'pitch' | 'live_deal' | 'misc'
@@ -25,6 +27,13 @@ const FILTERS: { value: FilterType; label: string }[] = [
 
 const fetcher = (url: string) => fetch(url).then((r) => r.json())
 
+function statusTone(status: SubtaskStatus) {
+  if (status === 'blocked') return 'bg-red-50 text-red-600'
+  if (status === 'waiting') return 'bg-amber-50 text-amber-700'
+  if (status === 'done') return 'bg-emerald-50 text-emerald-700'
+  return 'bg-slate-100 text-slate-600'
+}
+
 function TaskRow({
   task,
   onToggle,
@@ -34,6 +43,10 @@ function TaskRow({
 }) {
   const cfg = PRIORITY_CONFIG[task.priority]
   const dateLabel = dueDateLabel(task.due_date)
+  const dueTime = task.due_date && task.due_time
+    ? formatTime(`${task.due_date}T${task.due_time}:00`)
+    : ''
+  const dueLabel = dueTime && dateLabel ? `${dateLabel} at ${dueTime}` : (dueTime || dateLabel)
   const overdue = task.due_date
     ? isPast(parseISO(task.due_date)) && !isToday(parseISO(task.due_date))
     : false
@@ -65,15 +78,38 @@ function TaskRow({
         {cfg.label}
       </span>
 
+      <span className={cn('hidden sm:inline-flex px-2 py-0.5 rounded-full text-xs font-medium whitespace-nowrap flex-shrink-0', statusTone(task.status))}>
+        {task.status}
+      </span>
+
       {/* Due date */}
-      {dateLabel && (
+      {dueLabel && (
         <span
           className={cn(
             'text-xs whitespace-nowrap flex-shrink-0',
             overdue ? 'text-red-500 font-medium' : 'text-slate-400'
           )}
         >
-          {dateLabel}
+          {dueLabel}
+        </span>
+      )}
+
+      {/* Delegated by */}
+      {task.delegated_by_names && task.delegated_by_names.length > 0 && (
+        <span className="hidden sm:inline text-xs text-slate-400 whitespace-nowrap flex-shrink-0">
+          From: {task.delegated_by_names.join(', ')}
+        </span>
+      )}
+
+      {task.owner_member_name && (
+        <span className="hidden sm:inline text-xs text-slate-400 whitespace-nowrap flex-shrink-0">
+          Belongs to: {task.owner_member_name}
+        </span>
+      )}
+
+      {task.expected_hours != null && (
+        <span className="hidden sm:inline text-xs text-slate-400 whitespace-nowrap flex-shrink-0">
+          Est: {task.expected_hours}h
         </span>
       )}
 
@@ -119,40 +155,30 @@ export default function TaskQueuePage() {
 
   const tasks = data?.tasks ?? []
 
-  const today = useMemo(() => {
-    const d = new Date()
-    d.setHours(0, 0, 0, 0)
-    return d
-  }, [])
+  const today = new Date()
+  today.setHours(0, 0, 0, 0)
 
-  const in6 = useMemo(() => {
-    const d = addDays(today, 6)
-    d.setHours(23, 59, 59, 999)
-    return d
-  }, [today])
+  const in6 = addDays(today, 6)
+  in6.setHours(23, 59, 59, 999)
 
-  const { overdueTier, thisWeekTier, laterTier } = useMemo(() => {
-    const overdueTier: TaskWithProject[] = []
-    const thisWeekTier: TaskWithProject[] = []
-    const laterTier: TaskWithProject[] = []
+  const overdueTier: TaskWithProject[] = []
+  const thisWeekTier: TaskWithProject[] = []
+  const laterTier: TaskWithProject[] = []
 
-    for (const t of tasks) {
-      if (!t.due_date) {
-        laterTier.push(t)
-        continue
-      }
-      const d = parseISO(t.due_date)
-      if (isToday(d) || isPast(d)) {
-        overdueTier.push(t)
-      } else if (d <= in6) {
-        thisWeekTier.push(t)
-      } else {
-        laterTier.push(t)
-      }
+  for (const t of tasks) {
+    if (!t.due_date) {
+      laterTier.push(t)
+      continue
     }
-
-    return { overdueTier, thisWeekTier, laterTier }
-  }, [tasks, today, in6])
+    const d = parseISO(t.due_date)
+    if (isToday(d) || isPast(d)) {
+      overdueTier.push(t)
+    } else if (d <= in6) {
+      thisWeekTier.push(t)
+    } else {
+      laterTier.push(t)
+    }
+  }
 
   async function handleToggle(task: TaskWithProject) {
     await fetch(`/api/projects/${task.project_id}/subtasks`, {

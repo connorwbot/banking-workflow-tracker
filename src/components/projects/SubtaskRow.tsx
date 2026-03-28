@@ -3,20 +3,36 @@
 import { useState } from 'react'
 import { Badge } from '@/components/ui/Badge'
 import { priorityConfig } from '@/lib/utils/priority'
-import { dueDateLabel } from '@/lib/utils/date'
+import { dueDateLabel, formatTime } from '@/lib/utils/date'
 import { updateSubtask, deleteSubtask } from '@/hooks/useProjects'
 import { Trash2, CalendarDays } from 'lucide-react'
-import type { Subtask } from '@/types/database'
+import type { Subtask, TeamMember } from '@/types/database'
 import { cn } from '@/lib/utils/cn'
 
 interface SubtaskRowProps {
   subtask: Subtask
   projectId: string
+  members?: TeamMember[]
 }
 
-export function SubtaskRow({ subtask, projectId }: SubtaskRowProps) {
+export function SubtaskRow({ subtask, projectId, members = [] }: SubtaskRowProps) {
   const [loading, setLoading] = useState(false)
   const pConfig = priorityConfig(subtask.priority)
+
+  const delegatorNames = (subtask.delegated_by ?? [])
+    .map((id) => members.find((m) => m.id === id)?.name)
+    .filter(Boolean) as string[]
+
+  const ownerName = subtask.owner_member_id
+    ? members.find((m) => m.id === subtask.owner_member_id)?.name ?? null
+    : null
+
+  const dueTime = subtask.due_date && subtask.due_time
+    ? formatTime(`${subtask.due_date}T${subtask.due_time}:00`)
+    : ''
+  const dueLabel = dueTime
+    ? `${dueDateLabel(subtask.due_date)}${subtask.due_date ? ` at ${dueTime}` : dueTime}`
+    : (subtask.due_date ? dueDateLabel(subtask.due_date) : '')
 
   async function toggleComplete() {
     setLoading(true)
@@ -54,10 +70,28 @@ export function SubtaskRow({ subtask, projectId }: SubtaskRowProps) {
           <Badge variant={subtask.priority === 'urgent' ? 'red' : subtask.priority === 'high' ? 'orange' : subtask.priority === 'medium' ? 'blue' : 'gray'} className={pConfig.color}>
             {pConfig.label}
           </Badge>
-          {subtask.due_date && (
+          <Badge variant={subtask.status === 'blocked' ? 'red' : subtask.status === 'waiting' ? 'orange' : subtask.status === 'done' ? 'green' : 'gray'}>
+            {subtask.status}
+          </Badge>
+          {dueLabel && (
             <span className={cn('flex items-center gap-1 text-xs', subtask.due_date < new Date().toISOString().split('T')[0] && !subtask.completed ? 'text-red-500' : 'text-slate-500')}>
               <CalendarDays size={10} />
-              {dueDateLabel(subtask.due_date)}
+              {dueLabel}
+            </span>
+          )}
+          {ownerName && (
+            <span className="text-xs text-slate-400">
+              Belongs to: {ownerName}
+            </span>
+          )}
+          {subtask.expected_hours !== null && subtask.expected_hours !== undefined && (
+            <span className="text-xs text-slate-400">
+              Est: {subtask.expected_hours}h
+            </span>
+          )}
+          {delegatorNames.length > 0 && (
+            <span className="text-xs text-slate-400">
+              From: {delegatorNames.join(', ')}
             </span>
           )}
         </div>

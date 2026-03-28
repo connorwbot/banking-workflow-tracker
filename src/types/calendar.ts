@@ -7,6 +7,13 @@ export interface GoogleCalendarEvent {
   status?: 'confirmed' | 'tentative' | 'cancelled'
   colorId?: string
   htmlLink?: string
+  reminders?: {
+    useDefault?: boolean
+    overrides?: Array<{ method: 'email' | 'popup'; minutes: number }>
+  }
+  extendedProperties?: {
+    private?: Record<string, string>
+  }
 }
 
 export interface CalendarEventsResponse {
@@ -20,4 +27,11 @@ export interface CreateEventPayload {
   start: { dateTime: string; timeZone: string }
   end: { dateTime: string; timeZone: string }
   colorId?: string
+  reminders?: {
+    useDefault?: boolean
+    overrides?: Array<{ method: 'email' | 'popup'; minutes: number }>
+  }
+  extendedProperties?: {
+    private?: Record<string, string>
+  }
 }

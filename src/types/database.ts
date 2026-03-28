@@ -3,6 +3,9 @@ export type Json = string | number | boolean | null | { [key: string]: Json } | 
 export type ProjectType = 'pitch' | 'live_deal' | 'misc'
 export type ProjectStatus = 'active' | 'on_hold' | 'closed' | 'won' | 'lost'
 export type PriorityLevel = 'low' | 'medium' | 'high' | 'urgent'
+export type SubtaskStatus = 'open' | 'waiting' | 'blocked' | 'done'
+export type RecommendationFeedback = 'do_now' | 'too_big' | 'not_urgent' | 'waiting_on_someone'
+export type RecurringCadence = 'daily' | 'weekdays' | 'weekly'
 
 export interface Profile {
   id: string
@@ -70,15 +73,38 @@ export interface Subtask {
   id: string
   project_id: string
   user_id: string
+  owner_member_id: string | null
+  recurrence_template_id: string | null
   title: string
   description: string | null
   priority: PriorityLevel
+  status: SubtaskStatus
+  recommendation_feedback: RecommendationFeedback | null
   due_date: string | null
   due_time: string | null
+  expected_hours: number | null
   completed: boolean
   completed_at: string | null
   gcal_event_id: string | null
   delegated_by: string[]
+  sort_order: number
+  created_at: string
+  updated_at: string
+}
+
+export interface RecurringTaskTemplate {
+  id: string
+  user_id: string
+  project_id: string | null
+  owner_member_id: string | null
+  title: string
+  description: string | null
+  priority: PriorityLevel
+  cadence: RecurringCadence
+  weekday: number | null
+  due_time: string | null
+  expected_hours: number | null
+  active: boolean
   sort_order: number
   created_at: string
   updated_at: string
@@ -172,6 +198,7 @@ export interface Database {
       pipeline_deals: { Row: PipelineDeal; Insert: Partial<PipelineDeal>; Update: Partial<PipelineDeal> }
       pipeline_stage_history: { Row: PipelineStageHistory; Insert: Partial<PipelineStageHistory>; Update: Partial<PipelineStageHistory> }
       team_members: { Row: TeamMember; Insert: Partial<TeamMember>; Update: Partial<TeamMember> }
+      recurring_task_templates: { Row: RecurringTaskTemplate; Insert: Partial<RecurringTaskTemplate>; Update: Partial<RecurringTaskTemplate> }
     }
   }
 }

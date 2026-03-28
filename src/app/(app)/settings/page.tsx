@@ -5,7 +5,6 @@ import { Header } from '@/components/layout/Header'
 import { Button } from '@/components/ui/Button'
 import { Skeleton } from '@/components/ui/Skeleton'
 import useSWR, { mutate } from 'swr'
-import { createClient } from '@/lib/supabase/client'
 import { useRouter } from 'next/navigation'
 import { Check, Link2, Link2Off, Plus, Trash2 } from 'lucide-react'
 import type { TeamMember } from '@/types/database'
@@ -107,8 +106,7 @@ export default function SettingsPage() {
     }
   }, [prefsData])
 
-  const urlParams = typeof window !== 'undefined' ? new URLSearchParams(window.location.search) : null
-  const connected = urlParams?.get('connected') === 'true' || !!profile?.google_access_token
+  const connected = !!profile?.google_access_token
 
   function toggleGymDay(day: number) {
     setPrefs((p) => ({

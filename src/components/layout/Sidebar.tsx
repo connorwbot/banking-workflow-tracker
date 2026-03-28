@@ -18,7 +18,7 @@ import { createClient } from '@/lib/supabase/client'
 import { useRouter } from 'next/navigation'
 
 const NAV = [
-  { href: '/dashboard',  label: 'Dashboard',   icon: LayoutDashboard },
+  { href: '/dashboard',  label: 'Today',       icon: LayoutDashboard },
   { href: '/projects',   label: 'Projects',     icon: FolderKanban },
   { href: '/pipeline',   label: 'Task Queue',   icon: ListTodo },
   { href: '/standup',    label: 'Daily Log',    icon: BookOpen },
