@@ -13,6 +13,7 @@ import { Header } from '@/components/layout/Header'
 import { QuickCaptureModal } from '@/components/today/QuickCaptureModal'
 import { TaskTriageModal } from '@/components/today/TaskTriageModal'
 import { RecurringTemplateModal } from '@/components/today/RecurringTemplateModal'
+import { TaskSchedulerCard } from '@/components/today/TaskSchedulerCard'
 import { dueDateLabel, formatTime } from '@/lib/utils/date'
 import { cn } from '@/lib/utils/cn'
 import {
@@ -23,6 +24,7 @@ import {
   ClipboardCheck,
   FolderKanban,
   ListTodo,
+  Link2Off,
   Plus,
   Repeat,
   Timer,
@@ -39,6 +41,8 @@ type TodayTask = {
   due_date: string | null
   due_time: string | null
   expected_hours: number | null
+  gcal_event_id: string | null
+  gcal_event_link: string | null
   project_id: string
   owner_member_id?: string | null
   owner_member_name: string | null
@@ -148,11 +152,13 @@ function TaskRow({
   onComplete,
   onEdit,
   onDefer,
+  onRemoveFromCalendar,
 }: {
   task: TodayTask
   onComplete: (task: TodayTask) => void
   onEdit: (task: TodayTask) => void
   onDefer: (task: TodayTask) => void
+  onRemoveFromCalendar: (task: TodayTask) => void
 }) {
   const dateLabel = task.due_date ? dueDateLabel(task.due_date) : ''
   const dueTime = task.due_time ? formatTime(`${task.due_date ?? format(new Date(), 'yyyy-MM-dd')}T${task.due_time}:00`) : ''
@@ -192,6 +198,9 @@ function TaskRow({
           {task.expected_hours != null && (
             <span className="text-xs text-slate-500">Est. {formatHours(task.expected_hours)}</span>
           )}
+          {task.gcal_event_id && (
+            <Badge variant="green">On calendar</Badge>
+          )}
           {task.owner_member_name && (
             <span className="text-xs text-slate-500">Belongs to {task.owner_member_name}</span>
           )}
@@ -209,6 +218,25 @@ function TaskRow({
           >
             Tomorrow
           </button>
+          {task.gcal_event_link && (
+            <a
+              href={task.gcal_event_link}
+              target="_blank"
+              rel="noreferrer"
+              className="text-xs font-medium text-blue-600 hover:underline"
+            >
+              Open calendar
+            </a>
+          )}
+          {task.gcal_event_id && (
+            <button
+              onClick={() => onRemoveFromCalendar(task)}
+              className="inline-flex items-center gap-1 text-xs font-medium text-red-600 hover:underline"
+            >
+              <Link2Off size={12} />
+              Remove block
+            </button>
+          )}
         </div>
       </div>
     </div>
@@ -378,6 +406,17 @@ export default function DashboardPage() {
     mutate('/api/tasks')
   }
 
+  async function handleRemoveFromCalendar(task: TodayTask) {
+    if (!task.gcal_event_id) return
+    await fetch('/api/calendar/events', {
+      method: 'DELETE',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ eventId: task.gcal_event_id, subtaskId: task.id }),
+    })
+    mutate('/api/today')
+    mutate('/api/tasks')
+  }
+
   async function handleFeedback(project: ProjectWork, feedback: RecommendationFeedback) {
     if (!project.next_task) return
     await fetch(`/api/projects/${project.id}/subtasks`, {
@@ -459,6 +498,8 @@ export default function DashboardPage() {
           </Button>
         </div>
 
+        <TaskSchedulerCard />
+
         <div className="grid gap-5 xl:grid-cols-[1.1fr_0.9fr]">
           <Card>
             <CardHeader className="flex items-center justify-between">
@@ -487,7 +528,7 @@ export default function DashboardPage() {
                     <div className="space-y-2">
                       <p className="text-xs font-semibold uppercase tracking-wide text-red-500">Overdue</p>
                       {overdue.map((task) => (
-                        <TaskRow key={task.id} task={task} onComplete={handleComplete} onEdit={setTriageTask} onDefer={handleDefer} />
+                        <TaskRow key={task.id} task={task} onComplete={handleComplete} onEdit={setTriageTask} onDefer={handleDefer} onRemoveFromCalendar={handleRemoveFromCalendar} />
                       ))}
                     </div>
                   )}
@@ -495,7 +536,7 @@ export default function DashboardPage() {
                     <div className="space-y-2">
                       <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">Due today</p>
                       {todayTasks.map((task) => (
-                        <TaskRow key={task.id} task={task} onComplete={handleComplete} onEdit={setTriageTask} onDefer={handleDefer} />
+                        <TaskRow key={task.id} task={task} onComplete={handleComplete} onEdit={setTriageTask} onDefer={handleDefer} onRemoveFromCalendar={handleRemoveFromCalendar} />
                       ))}
                     </div>
                   )}
@@ -525,7 +566,7 @@ export default function DashboardPage() {
                 </div>
               ) : (
                 (data?.inbox_tasks ?? []).map((task) => (
-                  <TaskRow key={task.id} task={task} onComplete={handleComplete} onEdit={setTriageTask} onDefer={handleDefer} />
+                  <TaskRow key={task.id} task={task} onComplete={handleComplete} onEdit={setTriageTask} onDefer={handleDefer} onRemoveFromCalendar={handleRemoveFromCalendar} />
                 ))
               )}
             </CardContent>

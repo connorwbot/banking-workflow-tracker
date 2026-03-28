@@ -2,6 +2,8 @@ import { createClient } from '@/lib/supabase/server'
 import { NextResponse } from 'next/server'
 import { differenceInCalendarDays, format, parseISO, startOfDay, addDays } from 'date-fns'
 import { ensureInboxProject, isInboxProject } from '@/lib/inbox'
+import { getValidAccessToken } from '@/lib/google/token-refresh'
+import { listEvents } from '@/lib/google/calendar'
 
 type TaskRow = {
   id: string
@@ -13,6 +15,8 @@ type TaskRow = {
   due_date: string | null
   due_time: string | null
   expected_hours: number | null
+  gcal_event_id: string | null
+  gcal_event_link: string | null
   project_id: string
   owner_member_id: string | null
   recurrence_template_id: string | null
@@ -122,10 +126,10 @@ export async function GET() {
   const in7 = format(addDays(now, 7), 'yyyy-MM-dd')
   const todayStart = startOfDay(now)
 
-  const [tasksRes, projectsRes, recurringRes, standupRes, recurringTodayRes] = await Promise.all([
+  const [tasksRes, projectsRes, recurringRes, standupRes, recurringTodayRes, profileRes] = await Promise.all([
     supabase
       .from('subtasks')
-      .select('id,title,description,priority,status,recommendation_feedback,due_date,due_time,expected_hours,project_id,owner_member_id,recurrence_template_id,project:projects(id,name,color,type,status,due_date)')
+      .select('id,title,description,priority,status,recommendation_feedback,due_date,due_time,expected_hours,gcal_event_id,project_id,owner_member_id,recurrence_template_id,project:projects(id,name,color,type,status,due_date)')
       .eq('user_id', user.id)
       .eq('completed', false),
     supabase
@@ -153,6 +157,7 @@ export async function GET() {
       .eq('user_id', user.id)
       .eq('due_date', today)
       .not('recurrence_template_id', 'is', null),
+    supabase.from('profiles').select('*').eq('id', user.id).single(),
   ])
 
   if (tasksRes.error) return NextResponse.json({ error: tasksRes.error.message }, { status: 500 })
@@ -160,6 +165,7 @@ export async function GET() {
   if (recurringRes.error) return NextResponse.json({ error: recurringRes.error.message }, { status: 500 })
   if (standupRes.error) return NextResponse.json({ error: standupRes.error.message }, { status: 500 })
   if (recurringTodayRes.error) return NextResponse.json({ error: recurringTodayRes.error.message }, { status: 500 })
+  if (profileRes.error) return NextResponse.json({ error: profileRes.error.message }, { status: 500 })
 
   const { data: members } = await supabase
     .from('team_members')
@@ -175,9 +181,34 @@ export async function GET() {
   const recurringTodayTasks = (recurringTodayRes.data ?? []) as Pick<TaskRow, 'id' | 'title' | 'status' | 'project_id' | 'recurrence_template_id' | 'due_date'>[]
   const visibleProjects = projects.filter((project) => !isInboxProject(project))
 
+  let calendarLinkMap: Record<string, string | null> = {}
+  const scheduledEventIds = tasks
+    .map((task) => task.gcal_event_id)
+    .filter((id): id is string => Boolean(id))
+
+  if (profileRes.data?.google_access_token && scheduledEventIds.length > 0) {
+    try {
+      const token = await getValidAccessToken(supabase, profileRes.data)
+      const events = await listEvents(
+        token,
+        profileRes.data.google_calendar_id ?? 'primary',
+        addDays(now, -1).toISOString(),
+        addDays(now, 30).toISOString()
+      )
+      calendarLinkMap = Object.fromEntries(
+        events
+          .filter((event) => event.id && scheduledEventIds.includes(event.id))
+          .map((event) => [event.id, event.htmlLink ?? null])
+      )
+    } catch {
+      calendarLinkMap = {}
+    }
+  }
+
   const enrichedTasks = tasks.map((task) => ({
     ...task,
     owner_member_name: task.owner_member_id ? memberMap[task.owner_member_id] ?? null : null,
+    gcal_event_link: task.gcal_event_id ? calendarLinkMap[task.gcal_event_id] ?? null : null,
   }))
 
   const inboxTasks = enrichedTasks

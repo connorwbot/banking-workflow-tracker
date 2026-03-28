@@ -19,6 +19,7 @@ const DEFAULT_PREFS = {
 
 const PostSchema = z.object({
   days: z.number().int().min(1).max(14).optional(),
+  due_within_days: z.number().int().min(1).max(30).optional(),
   task_ids: z.array(z.string().uuid()).optional(),
   overwrite: z.boolean().optional(),
 })
@@ -32,6 +33,7 @@ export async function GET(request: Request) {
 
   const { searchParams } = new URL(request.url)
   const days = Math.min(Number(searchParams.get('days') ?? 7), 14)
+  const dueWithinDays = Math.min(Number(searchParams.get('due_within_days') ?? 14), 30)
 
   const { data: profile } = await supabase.from('profiles').select('*').eq('id', user.id).single()
   if (!profile?.google_access_token) {
@@ -59,6 +61,12 @@ export async function GET(request: Request) {
 
     const candidateTasks = (tasks ?? [])
       .filter((task) => !task.gcal_event_id)
+      .filter((task) => {
+        if (!task.due_date) return false
+        const dueDate = new Date(`${task.due_date}T00:00:00`)
+        const cutoff = addDays(new Date(), dueWithinDays)
+        return dueDate <= cutoff
+      })
       .map((task) => ({
         id: task.id,
         title: task.title,
@@ -76,7 +84,7 @@ export async function GET(request: Request) {
     const scheduledIds = new Set(schedule.map((slot) => slot.task_id))
     const unscheduled = candidateTasks.filter((task) => !scheduledIds.has(task.id))
 
-    return NextResponse.json({ connected: true, schedule, unscheduled })
+    return NextResponse.json({ connected: true, schedule, unscheduled, due_within_days: dueWithinDays })
   } catch (error) {
     return NextResponse.json({ connected: true, error: String(error) }, { status: 500 })
   }
@@ -94,6 +102,7 @@ export async function POST(request: Request) {
   if (!parsed.success) return NextResponse.json({ error: parsed.error.flatten() }, { status: 400 })
 
   const days = parsed.data.days ?? 7
+  const dueWithinDays = parsed.data.due_within_days ?? 14
   const overwrite = parsed.data.overwrite ?? false
 
   const { data: profile } = await supabase.from('profiles').select('*').eq('id', user.id).single()
@@ -126,6 +135,12 @@ export async function POST(request: Request) {
 
     const candidateTasks = (tasks ?? [])
       .filter((task) => overwrite || !task.gcal_event_id)
+      .filter((task) => {
+        if (!task.due_date) return false
+        const dueDate = new Date(`${task.due_date}T00:00:00`)
+        const cutoff = addDays(new Date(), dueWithinDays)
+        return dueDate <= cutoff
+      })
       .map((task) => ({
         id: task.id,
         title: task.title,

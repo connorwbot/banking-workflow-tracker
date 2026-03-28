@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState } from 'react'
 import { Header } from '@/components/layout/Header'
 import { Button } from '@/components/ui/Button'
 import { Skeleton } from '@/components/ui/Skeleton'
@@ -80,7 +80,13 @@ function TeamMembersCard() {
 export default function SettingsPage() {
   const router = useRouter()
   const { data: profile, isLoading: profileLoading } = useSWR('/api/profile', fetcher)
-  const { data: prefsData, isLoading: prefsLoading } = useSWR('/api/preferences', fetcher)
+  const { isLoading: prefsLoading } = useSWR('/api/preferences', fetcher, {
+    onSuccess: (data) => {
+      if (data?.preferences) {
+        setPrefs((p) => ({ ...p, ...data.preferences }))
+      }
+    },
+  })
 
   const [prefs, setPrefs] = useState({
     gym_preferred_start: '06:00',
@@ -99,12 +105,6 @@ export default function SettingsPage() {
   })
   const [saving, setSaving] = useState(false)
   const [saved, setSaved] = useState(false)
-
-  useEffect(() => {
-    if (prefsData?.preferences) {
-      setPrefs((p) => ({ ...p, ...prefsData.preferences }))
-    }
-  }, [prefsData])
 
   const connected = !!profile?.google_access_token
 
@@ -150,6 +150,9 @@ export default function SettingsPage() {
         {/* Google Calendar */}
         <div className="bg-white rounded-xl border border-slate-200 p-5">
           <h2 className="font-semibold text-slate-800 mb-3">Google Calendar</h2>
+          <p className="mb-3 text-xs text-slate-500">
+            Use your personal Google Calendar as the scheduling layer. Copy internship meetings over from Outlook, then let the app schedule task blocks and reminders around them.
+          </p>
           {connected ? (
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-2 text-sm text-green-700">
